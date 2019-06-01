@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Set SCRIPT_ROOT (see http://flask.pocoo.org/docs/1.0/patterns/jquery/) -->
+    <script type=text/javascript>
+      $SCRIPT_ROOT = {{ request.script_root|tojson|safe }};
+    </script>
+
+    <!-- DataTables, JQuery, Bootstrap -->
+
+    <!-- Uncomment below if using locally downloaded files -->
+    <!--
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='DataTables/Bootstrap-4-4.1.1/css/bootstrap.min.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='DataTables/DataTables-1.10.18/css/jquery.dataTables.min.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='DataTables/Select-1.3.0/css/select.dataTables.min.css') }}">
+    
+    <script type="text/javascript" src="{{ url_for('static', filename='DataTables/jQuery-3.3.1/jquery-3.3.1.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='DataTables/DataTables-1.10.18/js/jquery.datatables.min.js') }}"></script>
+    <script type="text/javascript" src="{{ url_for('static', filename='DataTables/Select-1.3.0/js/dataTables.select.min.js') }}"></script>
+    -->
+
+    <!-- Uncomment below if using CDN. Note: Bootstrap is not used since it wasn't working. -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/dt/jq-3.3.1/dt-1.10.18/sl-1.3.0/datatables.min.css"/>
+    <script type="text/javascript" src="https://cdn.datatables.net/v/dt/jq-3.3.1/dt-1.10.18/sl-1.3.0/datatables.min.js"></script>
+    
+    <script>
+    $(document).ready(function() {
+      var table = $('#output').DataTable( {
+        columnDefs: [ {
+            orderable: false,
+            className: 'select-checkbox',
+            targets:   0
+        } ],
+        select: {
+            style:    'multi',
+            selector: 'td:first-child'
+        },
+        order: [[ 1, 'asc' ]]
+      } );
+      
+      // Select rows that were specified by flask app.
+      // ''selected'' is a javascript array containing indices of selected rows,
+      // parsed from selected_rows variable input from flask.
+      // https://datatables.net/reference/type/row-selector
+      // https://stackoverflow.com/questions/11178426/how-can-i-pass-data-from-flask-to-javascript-in-a-template
+      {% if selected_rows %}
+        var selected = JSON.parse('{{ selected_rows | tojson }}');
+        table.rows(selected).select();
+      {% endif %}
+
+      // Next, automatically log user selection/delection events.
+      // http://flask.pocoo.org/docs/1.0/patterns/jquery/
+      // https://datatables.net/extensions/select/examples/api/events.html 
+      table
+        .on( 'select', function ( e, dt, type, indexes ) {
+            var rowData = table.rows( indexes ).data().toArray();
+            $.ajax($SCRIPT_ROOT + '/_handle_selection', 
+              {data : {selected : 1, row_data : JSON.stringify(rowData)}});
+        } )
+        .on( 'deselect', function ( e, dt, type, indexes ) {
+            var rowData = table.rows( indexes ).data().toArray();
+            $.ajax($SCRIPT_ROOT + '/_handle_selection', 
+              {data : {selected : 0, row_data : JSON.stringify(rowData)}});
+        } );
+    } );
+    </script>
+
+    <title>Table Selection Example</title>
+  </head>
+  <body>
+    <div class="container">
+      <div id="content" class="col-sm">
+      Selecting or deselecting items in the table will automatically modify the "flag" column of the data.sqlite database.<br><br>
+      {% if table %} 
+        {{ table|safe }}
+      {% endif %}
+      </div>
+    </div>
+  </body>
+</html>
